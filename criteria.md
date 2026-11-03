@@ -5,14 +5,14 @@ Five criteria that say what "working" means for this service, written in unit 7
 
 **All five are yours.** None are given.
 
-An acceptance criterion names a number or something plainly observable. *"The
-detector is accurate"* is an opinion — and perfect AI detection isn't possible
-anyway, so it's an opinion about something nobody can deliver. *"Of 10 pieces I
-wrote myself, at most 1 is labelled high-confidence AI"* is a criterion.
+An acceptance criterion names a number or something plainly observable. _"The
+detector is accurate"_ is an opinion — and perfect AI detection isn't possible
+anyway, so it's an opinion about something nobody can deliver. _"Of 10 pieces I
+wrote myself, at most 1 is labelled high-confidence AI"_ is a criterion.
 
-Under each, write a sentence or two on **why that target**. *"I allow at most 1
+Under each, write a sentence or two on **why that target**. _"I allow at most 1
 false positive in 10 because on a writing site a wrong accusation costs more
-than a missed detection"* is a real answer.
+than a missed detection"_ is a real answer.
 
 > Missing your own targets next unit costs you nothing. Setting a target so
 > easy you can't miss it does.
@@ -23,13 +23,13 @@ than a missed detection"* is a real answer.
 
 **Cover at least three of these five areas.** They're prompts, not a form.
 
-| Area | A question it could answer |
-|---|---|
-| False positives | How often may a human's writing get called AI? |
-| Score spread | How far apart should clearly-AI and clearly-human text score? |
-| Label coverage | Is every one of your three labels actually reachable? |
-| The appeal path | Does an appeal always change status and always get recorded? |
-| Bad input | What happens when `text` is missing, empty, or enormous? |
+| Area            | A question it could answer                                    |
+| --------------- | ------------------------------------------------------------- |
+| False positives | How often may a human's writing get called AI?                |
+| Score spread    | How far apart should clearly-AI and clearly-human text score? |
+| Label coverage  | Is every one of your three labels actually reachable?         |
+| The appeal path | Does an appeal always change status and always get recorded?  |
+| Bad input       | What happens when `text` is missing, empty, or enormous?      |
 
 Two things worth knowing before you pick numbers:
 
@@ -42,63 +42,60 @@ Two things worth knowing before you pick numbers:
   a **miss**.
 
 ---
+
 ## 1.
 
-<!-- Your criterion. It must name a number. -->
+## 1. False Positive Rate
 
-
+Across all three trials, the system should incorrectly label no more than 1 out of 10 human-written texts as high-confidence AI-generated.
 
 **Why this target:**
 
-
+I chose this target because falsely accusing a human writer of using AI can affect their trust and reputation. I want my system to minimize false accusations while still detecting AI-generated content.
 
 ---
 
 ## 2.
 
-<!-- Your criterion. -->
+## 2. Score Spread
 
-
+Across all three trials, the average combined score for clearly AI-generated texts should be at least 0.30 higher than the average combined score for clearly human-written texts.
 
 **Why this target:**
 
-
+I chose 0.30 because I want my system to show a clear difference between AI-generated and human-written content. This difference will help me understand whether combining both signals improves the detection results.
 
 ---
 
-## 3.
+## 3. Label Coverage
 
-<!-- Your criterion. -->
-
-
+Across all three trials, the system should successfully produce all 3 labels: high-confidence AI, high-confidence human, and unsure. Each label must be reachable with at least one test input in every trial.
 
 **Why this target:**
 
-
+I chose this target because my system should not always predict AI or human. Sometimes the result may be uncertain, so the system should provide an unsure label instead of making a wrong prediction.
 
 ---
 
 ## 4.
 
-<!-- Your criterion. -->
+## 4. Appeal Path
 
-
+Across all three trials, 100% of valid appeals (10 out of 10) should be successfully recorded in the audit log, and each appeal should change the content status to under_review.
 
 **Why this target:**
 
-
+I chose 100% because every writer should have a chance to challenge an incorrect prediction. If an appeal is lost or not recorded, the writer may not get a fair review. I want my system to handle every valid appeal reliably.
 
 ---
 
-## 5.
+## 5. Bad Input Handling
 
-<!-- Your criterion. -->
-
-
+Across all three trials, the system should correctly handle 10 out of 10 invalid requests, including missing text, empty text, incorrect data types, and text exceeding 10,000 characters. Each invalid request should return an appropriate HTTP error (400 or 413) without crashing the server.
 
 **Why this target:**
 
-
+I chose this target because users may accidentally submit empty, missing, or very large text. My system should handle these situations safely and return clear error messages instead of crashing.
 
 ---
 
