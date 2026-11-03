@@ -34,140 +34,274 @@
 
 <!-- ═══════════════════════ UNIT 7 — THE BUILD ═══════════════════════ -->
 
+# Provenance Guard
+
+Provenance Guard is a Flask-based web service that analyzes writing and estimates whether it shows patterns associated with AI-generated or human-written text.
+
+The system uses two different signals, combines their scores, provides a readable prediction, and allows writers to appeal a decision.
+
+**How to run this project:** See [RUNNING.md](RUNNING.md).
+
 ## What This Does
 
-<!-- The path a submission takes, from arriving to the label a reader sees.
-     Six or seven steps — this is the trace you wrote in Milestone 1. -->
+When a user submits text, the service follows these steps:
 
+1. The user sends text and a creator ID to the `/submit` endpoint.
+2. The Flask application validates the input.
+3. `detector.py` uses a local GPT-2 model to calculate a model signal.
+4. `stylometry.py` analyzes sentence length variation, vocabulary diversity, and punctuation density.
+5. `scoring.py` combines both signals into one score.
+6. The score is converted into a human-readable label: `human`, `unsure`, or `ai`.
+7. The response is returned to the user, and the decision is saved in the audit log.
 
+Writers can challenge a result using the `/appeal` endpoint. Their appeal is recorded with an `under_review` status.
 
 ---
 
 ## Signals and Scoring
 
-<!-- For each signal: what property it measures, why that might differ between
-     human and AI writing, and WHAT IT CAN'T SEE.
-
-     The blind spot is not optional. If you can't name it you don't understand
-     the signal yet — and unit 8's attack set is built out of blind spots. -->
-
 ### Signal one — the model signal
 
 **What it measures:**
 
+The model signal uses a local GPT-2 language model to measure how predictable the submitted text is. It converts the model's perplexity measurement into a score between 0 and 1.
+
 **Why that might differ between human and AI writing:**
 
+AI-generated text can follow predictable language patterns because language models generate text by predicting likely next tokens. Human writing may contain more unexpected word choices and sentence structures.
+
 **What it can't see:**
+
+This signal cannot reliably identify who actually wrote the text. Formal or predictable human writing may receive an AI-like score, while unusual or edited AI-generated writing may receive a lower score. It also cannot verify authorship or understand the circumstances in which the text was written.
 
 ### Signal two — the style signal
 
 **What it measures:**
 
+The style signal measures three writing characteristics:
+
+- **Sentence length spread:** Measures how much sentence lengths vary.
+- **Type-token ratio:** Measures unique words compared with total words.
+- **Punctuation density:** Measures punctuation marks relative to text length.
+
+The three measurements are converted into AI-oriented scores and combined using these weights:
+
+- Sentence length spread: 40%
+- Vocabulary diversity: 30%
+- Punctuation density: 30%
+
 **Why that might differ between human and AI writing:**
+
+AI-generated writing may contain more consistent sentence lengths and repeated vocabulary patterns. Human writing can have more variation in sentence structure and punctuation.
 
 **What it can't see:**
 
-### The combining rule
+The style signal does not understand the meaning of the text or identify its author. Small edits, punctuation changes, sentence splitting, and vocabulary changes can affect the score. Short texts can also produce misleading results.
 
-<!-- Write the rule in words, then give the numbers. What happens when the two
-     signals disagree? -->
+### The combining rule
 
 **The rule:**
 
+The model signal receives 60% weight, and the style signal receives 40% weight.
+
+If the two signals strongly disagree, the combined score is reduced by 0.10. This is intended to reduce overconfident AI accusations when the evidence is inconsistent.
+
 **The numbers:**
+
+```python
+combined_score = 0.60 * model_score + 0.40 * style_score
+
+if abs(model_score - style_score) >= 0.40:
+    combined_score -= 0.10
+```
+
+The final score is restricted to the range 0–1.
 
 **Where it lives:** `scoring.py::combine_signals`
 
-<!-- ⚠️ The grader checks your code against that line. If your rule lives
-     somewhere else, say where. -->
-
 **A case where my two signals split, and what my rule does with it:**
 
+I tested a model score of 0.90 and a style score of 0.10.
 
+Without the disagreement penalty, the weighted score would be 0.58. Because the signals strongly disagree, the system subtracts 0.10.
+
+The final combined score becomes **0.48**, producing an `unsure` prediction.
+
+This approach avoids making a confident accusation when the two signals provide conflicting evidence.
+
+**Calibration observations:**
+
+| Writing sample                 | Style score |
+| ------------------------------ | ----------: |
+| AI-like writing                |      0.6396 |
+| Casual human writing           |      0.4497 |
+| Plain human writing            |      0.5855 |
+| Lightly edited AI-like writing |      0.4642 |
+
+These were illustrative writing samples rather than a verified authorship dataset.
+
+The plain human sample received a relatively high score, showing a false-positive risk. The edited AI-like sample received a lower score than the original AI-like sample, showing how easily writing changes can affect the style signal.
 
 ---
 
 ## Label Variants
 
-<!-- The exact text of all three labels, as a reader would see them, and the
-     score range each covers.
-
-     Write them for someone who has never heard the word "threshold". -->
-
-| Label | Score range | The exact text a reader sees |
-|---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| Label                 | Score range               | The exact text a reader sees                                                                                                              |
+| --------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| High-confidence human | 0.00–0.35                 | This writing appears more consistent with human writing, but we cannot determine authorship with certainty.                               |
+| Unsure                | Above 0.35 and below 0.65 | We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone. |
+| High-confidence AI    | 0.65–1.00                 | This writing shows patterns associated with AI-generated text, but this result is not proof that AI was used.                             |
 
 **Why I worded the "unsure" one this way:**
-<!-- It's the hardest of the three. It has to admit uncertainty without
-     sounding like an accusation, because the person reading it may well have
-     written every word themselves. -->
 
-
+I wanted the message to be fair and respectful to writers. An uncertain score should not make someone feel falsely accused of using AI. The label clearly explains that the system cannot confidently determine authorship and that no conclusion should be drawn from the result alone.
 
 ---
 
 ## Sample Run
 
-<!-- One submission and one appeal, pasted as text: the request, the response,
-     and the log entries. -->
+### A submission
 
-**A submission**
+**Request:**
 
-<!-- The response needs content_id, guess, confidence, label, AND both
-     signal scores - model_score and style_score. Unit 8's tools read those
-     two off the response, so leaving them out costs you next unit's
-     diagnostics. -->
+```powershell
+$body = @{
+    text = "Artificial intelligence is transforming modern industries. It improves efficiency and increases productivity."
+    creator_id = "user123"
+} | ConvertTo-Json -Compress
 
-```bash
-$ curl -X POST http://127.0.0.1:5000/submit \
-  -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+Invoke-RestMethod -Uri "http://127.0.0.1:5000/submit" -Method POST -ContentType "application/json" -Body $body
 ```
+
+**Actual response:**
 
 ```json
-
+{
+  "confidence": 0.5547,
+  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+  "guess": "unsure",
+  "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
+  "model_score": 0.4822,
+  "style_score": 0.6634
+}
 ```
 
-**An appeal**
+The system returned `unsure` because the combined score was between the human and AI thresholds.
 
-```bash
-$ curl -X POST http://127.0.0.1:5000/appeal \
-  -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+### An appeal
+
+**Request:**
+
+```powershell
+$body = @{
+    content_id = "e7e6af7d-9968-48dd-b397-b33605d6175e"
+    reasoning = "I wrote this text myself. Please review the AI detection result."
+} | ConvertTo-Json -Compress
+
+Invoke-RestMethod -Uri "http://127.0.0.1:5000/appeal" -Method POST -ContentType "application/json" -Body $body
 ```
+
+**Expected response structure (appeal request was tested):**
 
 ```json
-
+{
+  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+  "status": "under_review",
+  "message": "Your appeal has been submitted for review."
+}
 ```
 
-**What the log shows afterwards**
+### What the log shows afterwards
 
-```bash
-$ curl "http://127.0.0.1:5000/log?limit=3"
+**Request:**
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:5000/log?limit=2" -Method GET | ConvertTo-Json -Depth 5
 ```
+
+**Actual audit log entries:**
 
 ```json
-
+{
+  "count": 2,
+  "entries": [
+    {
+      "combined_score": 0.5547,
+      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+      "creator_id": "user123",
+      "guess": "unsure",
+      "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
+      "model_score": 0.4822,
+      "status": "decided",
+      "style_score": 0.6634,
+      "timestamp": "2026-11-03T03:53:51+00:00"
+    },
+    {
+      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+      "creator_id": "user123",
+      "event": "appeal",
+      "reasoning": "I wrote this text myself. Please review the AI detection result.",
+      "status": "under_review",
+      "timestamp": "2026-11-03T03:55:33+00:00"
+    }
+  ]
+}
 ```
+
+The audit log preserves the original decision and adds the appeal as a separate entry. This provides a history of the submission and its review request.
 
 ---
 
 ## How I Used AI
 
-**Moment 1**
+### Moment 1 — Implementing the Flask API
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+**What I asked for:**
 
-**Moment 2**
+I asked ChatGPT to help me understand the Flask starter code and implement the `/submit` endpoint step by step.
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+**What came back:**
+
+ChatGPT explained how to accept JSON input, validate user submissions, generate unique content IDs, call the local AI detector, and return a JSON response.
+
+**What I changed:**
+
+I integrated the code into my existing Flask application, fixed indentation and route errors, and tested the endpoint using PowerShell. I also connected the audit logging functionality and verified that submissions were saved.
+
+### Moment 2 — Stylometry, Scoring, and Appeals
+
+**What I asked for:**
+
+I asked ChatGPT for help implementing sentence length spread, type-token ratio, punctuation density, combined scoring, and the appeal endpoint.
+
+**What came back:**
+
+ChatGPT provided Python implementations, explanations, and testing commands. It also helped me create readable prediction labels and handle disagreements between the two detection signals.
+
+**What I changed:**
+
+I added the functions to my project, tested different writing samples, integrated both signals into the Flask API, and verified the combined scores. I implemented appeal handling and confirmed that appeal requests were recorded in the audit log.
+
+---
+
+## Unit 8 — Testing and Improvements
+
+The following sections remain to be completed in Unit 8:
+
+- Rate Limiting
+- Attack Run — Before
+- Run Log and Verdicts
+- The Improvement
+- Attack Run — After
+- What's Still Broken
+
+These sections will be completed using actual attack results, evaluation runs, and documented improvements.
+
+---
+
+**Repository:** https://github.com/Priyanka651/ai201-project4-provenance-guard-starter-v2026
+
+**How to run this project:** [RUNNING.md](RUNNING.md)
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
@@ -175,9 +309,10 @@ $ curl "http://127.0.0.1:5000/log?limit=3"
 
 ## Rate Limiting
 
-**My limits:** ___ per minute, ___ per day
+**My limits:** **_ per minute, _** per day
 
 **Why those numbers and not others:**
+
 <!-- Think about two people: a real writer submitting their own work a few
      times an hour, and a script sending a thousand variations to map your
      thresholds. Your numbers have to be liveable for the first and hostile to
@@ -202,8 +337,6 @@ can look like one. -->
 <!-- Every attack with its outcome and a held-or-broke mark.
      `run_attacks.py --label before` produces the table. -->
 
-
-
 **Ten audit log entries from the run**
 
 <!-- Choose entries that show the interesting failures, not the ten easiest. -->
@@ -215,8 +348,6 @@ can look like one. -->
 **The single worst outcome** — the one I'd least want to explain to a writer
 whose work got caught by it:
 
-
-
 ---
 
 ## Run Log and Verdicts
@@ -224,12 +355,12 @@ whose work got caught by it:
 <!-- Your five criteria across three trials. `run_eval.py --label before`. -->
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |
+| --------- | ------ | ----- | ----- | ----- | ------- |
+| 1.        |        |       |       |       |         |
+| 2.        |        |       |       |       |         |
+| 3.        |        |       |       |       |         |
+| 4.        |        |       |       |       |         |
+| 5.        |        |       |       |       |         |
 
 **Real output from one trial**, pasted as text, naming the file and function
 that produced it:
@@ -254,8 +385,6 @@ that produced it:
 
      Look for a pattern. Five failures on one signal is one problem, not five. -->
 
-
-
 ---
 
 ## The Improvement
@@ -268,14 +397,10 @@ that produced it:
 
 <!-- Same format. `run_attacks.py --label after` -->
 
-
-
 **Did it help, and how do I know:**
 
 <!-- Widening the unsure band usually fixes one problem and creates another.
      Reporting that trade honestly is worth full credit. -->
-
-
 
 ---
 
@@ -284,14 +409,10 @@ that produced it:
 <!-- For each attack still getting through and each criterion still missed:
      what you'd do, and why you stopped. -->
 
-
-
 **The trade I'd make if this ran for real:**
 
 <!-- Two sentences. Fewer wrong accusations means more AI text getting through.
      Say which way you'd go and WHO PAYS FOR IT. -->
-
-
 
 <!-- ═════════════════════════════════════════════════════════════════════
 
