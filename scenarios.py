@@ -1,82 +1,90 @@
 """
-What your test runs. ← UNIT 8, MILESTONE 3
+Provenance Guard — Unit 8, Milestone 3
 
-Each of your five criteria needs something run against it. A criterion about
-false positives needs your own writing. One about label coverage needs inputs
-across the score range. One about the appeal path needs a real content_id.
-
-Working that out is Milestone 3's first step, and this file is where you write
-it down. `run_eval.py` runs everything here three times.
-
-Two are filled in as examples. Replace them with what your criteria actually
-need — these are a shape, not a set.
-
-A scenario carries **either** of these:
-
-    "texts"   a list of strings. Each is sent as {"text": ..., "creator_id": ...}
-              with a creator_id made up for you. Use this for most criteria.
-
-    "bodies"  a list of whole request bodies, sent exactly as written. Use this
-              when the malformed request IS the point — empty text, no `text`
-              field at all, something enormous. A bad-input criterion needs it,
-              because you cannot express "the field is missing" as a string.
+Evaluation scenarios for acceptance criteria.
+run_eval.py runs these scenarios three times.
 """
 
 SCENARIOS = [
+    # Criterion 1: Human writing false positives
     {
-        "name": "my own writing",
+        "name": "human writing false positives",
         "criterion": 1,
-        # ⚠️ PUT YOUR OWN WRITING HERE. Not AI text, not a sample from the web —
-        # things you actually wrote. This is the criterion that matters most and
-        # it's meaningless with someone else's prose.
         "texts": [
-            "REPLACE ME with a paragraph you wrote yourself.",
-            "REPLACE ME with another one. Ten pieces is the usual number.",
+            "During my internship, I worked on a rich text editor using React. I started with basic features and learned how to add more advanced functionality. Some parts were difficult, but I improved my understanding by testing different solutions.",
+
+            "I developed a PDF question answering application using Python and LangChain. The application allows users to upload documents and ask questions. I learned about text chunking, embeddings, and vector databases while building this project.",
+
+            "Last week I was working on my application when I noticed that one feature was not working correctly. I checked the code and tested different possibilities. After some debugging, I found the issue and fixed it.",
+
+            "When I started learning React, I was confused about components and props. I practiced by creating small applications. Over time, I became more comfortable using hooks and managing state.",
+
+            "I enjoy working on software development projects because they help me learn new technologies. Sometimes I face unexpected errors, but solving those problems helps me understand the concepts better.",
+
+            "In one of my assignments, I had to prepare a machine learning dataset before training the model. I checked missing values, selected useful features, and divided the data into training and testing sets.",
+
+            "Yesterday I spent some time reviewing my Python code. I wanted to make sure that the functions were working correctly. I tested different inputs and made small changes where necessary.",
+
+            "During my project, I learned that testing is an important part of software development. Even when an application appears to work, unexpected inputs can reveal problems that need to be fixed.",
+
+            "I recently worked on integrating an API with a frontend application. At first, the response data was not displayed correctly. I checked the request and response format before finding the problem.",
+
+            "Learning new programming concepts takes time and practice. I usually start by understanding the basic idea and then try implementing it in a small project. This approach helps me remember what I learned.",
         ],
     },
+
+    # Criterion 2: AI vs human score separation
+    {
+        "name": "score separation",
+        "criterion": 2,
+        "texts": [
+            "Artificial intelligence has transformed the landscape of modern technology by enabling automated decision-making, improving operational efficiency, and facilitating data-driven innovation across multiple industries.",
+
+            "Machine learning systems rely on carefully structured training processes, comprehensive feature engineering, and systematic evaluation methodologies to achieve reliable predictive performance.",
+
+            "Yesterday I tried to finish my project but got stuck on an error. I checked a few things and then asked my friend for help. We found a small mistake in the code.",
+        ],
+    },
+
+    # Criterion 3: All three labels reachable
     {
         "name": "label coverage",
-        "criterion": 2,
-        # Inputs spread across your score range, so you can check all three
-        # labels are actually reachable.
+        "criterion": 3,
         "texts": [
-            "REPLACE ME with something you're confident is AI-generated.",
-            "REPLACE ME with something you're confident is human-written.",
-            "REPLACE ME with something genuinely borderline.",
+            "The implementation uses a structured pipeline to process input data, extract relevant features, and generate predictions. Each component is designed to improve consistency, reliability, and overall system performance.",
+
+            "Yesterday I was working on my project and got stuck on an error. I checked my code several times but could not find the problem. After taking a short break, I noticed a small mistake and fixed it.",
+
+            "I started working on the application in the morning. The first test worked, but the second one gave an unexpected result. I changed a few things and ran it again. I still need to check whether the results are correct.",
         ],
     },
-    # A bad-input criterion looks like this. Uncomment and adjust if that's one
-    # of your five — these are raw request bodies, sent exactly as written.
-    #
-    # {
-    #     "name": "bad input",
-    #     "criterion": 3,
-    #     "bodies": [
-    #         {"text": "", "creator_id": "eval_bad_empty"},
-    #         {"creator_id": "eval_bad_missing"},          # no text field at all
-    #         {"text": "word " * 50000, "creator_id": "eval_bad_huge"},
-    #         {"text": None, "creator_id": "eval_bad_null"},
-    #     ],
-    # },
 
-    # TODO: add what your remaining criteria need.
-    #
-    # A criterion about the appeal path can't be tested by sending text alone;
-    # it needs a submission first and then an appeal against the content_id
-    # that came back. You'll need to test that one by hand, or extend this file
-    # and run_eval.py to do it. Saying which you did is part of the write-up.
+    # Criterion 5: Invalid input handling
+    {
+        "name": "bad input validation",
+        "criterion": 5,
+        "bodies": [
+            {"text": "", "creator_id": "eval_empty"},
+            {"creator_id": "eval_missing"},
+            {"text": None, "creator_id": "eval_null"},
+            {"text": 123, "creator_id": "eval_number"},
+            {"text": "word " * 3000, "creator_id": "eval_long"},
+            {"text": "Valid text", "creator_id": ""},
+            {"text": [], "creator_id": "eval_list"},
+            {"text": {}, "creator_id": "eval_dict"},
+            {"text": False, "creator_id": "eval_boolean"},
+            {"text": "Hello", "creator_id": None},
+        ],
+    },
 ]
 
 
 def validate() -> list[str]:
     """
-    Complain about anything malformed, before a long run rather than during.
-
-    A "bodies" scenario is deliberately exempt from the empty check — an empty
-    string is the whole point of a bad-input case, and refusing to run one
-    would make that criterion untestable.
+    Validate scenarios before evaluation.
     """
     problems = []
+
     for i, scenario in enumerate(SCENARIOS, 1):
         if not scenario.get("name"):
             problems.append(f"scenario {i} has no name")
@@ -86,8 +94,7 @@ def validate() -> list[str]:
 
         if texts and bodies:
             problems.append(
-                f"scenario {i} ('{scenario.get('name')}') has both texts and "
-                f"bodies — pick one"
+                f"scenario {i} has both texts and bodies"
             )
             continue
 
@@ -95,24 +102,24 @@ def validate() -> list[str]:
             for j, body in enumerate(bodies, 1):
                 if not isinstance(body, dict):
                     problems.append(
-                        f"scenario {i}, body {j} is not a dict — bodies are whole "
-                        f"request bodies, like {{'text': '', 'creator_id': 'x'}}"
+                        f"scenario {i}, body {j} is not a dict"
                     )
             continue
 
         if not texts:
-            problems.append(f"scenario {i} has no texts and no bodies")
+            problems.append(
+                f"scenario {i} has no texts and no bodies"
+            )
             continue
 
         for j, text in enumerate(texts, 1):
             if not str(text).strip():
                 problems.append(
-                    f"scenario {i}, text {j} is empty — if an empty submission is what "
-                    f"you're testing, use 'bodies' instead of 'texts'"
+                    f"scenario {i}, text {j} is empty"
                 )
             elif str(text).startswith("REPLACE ME"):
                 problems.append(
-                    f"scenario {i} ('{scenario.get('name')}'), text {j} is still "
-                    f"the placeholder"
+                    f"scenario {i}, text {j} is still a placeholder"
                 )
+
     return problems
