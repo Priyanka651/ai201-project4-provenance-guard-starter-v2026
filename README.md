@@ -459,3 +459,27 @@ that produced it:
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
+
+ Milestone 4: Baseline Evaluation Analysis
+
+I ran the baseline evaluation three times before making any improvements.
+
+### Acceptance Criteria Results
+
+- **Criterion 1 — Not valid yet:** Six out of ten sample texts were classified as AI in each trial. However, the samples were AI-generated, so this does not establish a false-positive rate for genuine human writing. The evaluation needs original human-written samples.
+- **Criterion 2 — Not verified:** The evaluation produced scores, but the test data did not contain a properly separated set of known human and AI writing. The required average score difference of at least 0.30 cannot yet be verified.
+- **Criterion 3 — MISSED:** Only `ai` and `unsure` appeared in all three trials. The `human` label was missing from the label-coverage scenario.
+- **Criterion 4 — Not tested:** The required ten valid appeals have not yet been evaluated across three trials.
+- **Criterion 5 — MET:** All ten invalid requests returned HTTP 400 or 413 in each of the three trials. No server crashes occurred in this evaluation scenario.
+
+### Attack Failure Analysis
+
+The attack set exposed a serious failure in **MF02**, where a single-character submission returned HTTP 500.
+
+The failure occurred in the input validation and model-scoring stages. The `/submit` endpoint accepted the text, but `detector.model_signal()` raised a `ValueError` because the text was too short to score. The exception was not handled, causing a server error instead of a controlled rejection.
+
+The attack set also showed false-positive problems. Human-written submissions FP02 through FP07 were classified as AI. This suggests the current scoring signals and thresholds can incorrectly flag formal, structured, or repetitive human writing.
+
+### Planned Improvement
+
+For Milestone 5, I will improve short-text validation so unsupported inputs are rejected safely instead of causing HTTP 500 errors. I will rerun the attack set and evaluation afterward to compare the results.
