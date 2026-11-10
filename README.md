@@ -24,8 +24,8 @@ When a user submits text, the service follows these steps:
 
 7. The response is returned to the user, and the decision is saved in the audit log.
 
-Writers can challenge a result using the `/appeal` endpoint. Their appeal is recorded with an `under_review` status.
----
+## Writers can challenge a result using the `/appeal` endpoint. Their appeal is recorded with an `under_review` status.
+
 ## Signals and Scoring
 
 ### Signal one — the model signal
@@ -120,8 +120,8 @@ This approach avoids making a confident accusation when the two signals provide 
 
 These were illustrative writing samples rather than a verified authorship dataset.
 
-The plain human sample received a relatively high score, showing a false-positive risk. The edited AI-like sample received a lower score than the original AI-like sample, showing how easily writing changes can affect the style signal.
----
+## The plain human sample received a relatively high score, showing a false-positive risk. The edited AI-like sample received a lower score than the original AI-like sample, showing how easily writing changes can affect the style signal.
+
 ## Label Variants
 
 | Label                 | Score range               | The exact text a reader sees                                                                                                              |
@@ -136,8 +136,8 @@ The plain human sample received a relatively high score, showing a false-positiv
 
 **Why I worded the "unsure" one this way:**
 
-I wanted the message to be fair and respectful to writers. An uncertain score should not make someone feel falsely accused of using AI. The label clearly explains that the system cannot confidently determine authorship and that no conclusion should be drawn from the result alone.
----
+## I wanted the message to be fair and respectful to writers. An uncertain score should not make someone feel falsely accused of using AI. The label clearly explains that the system cannot confidently determine authorship and that no conclusion should be drawn from the result alone.
+
 ## Sample Run
 
 ### A submission
@@ -161,23 +161,19 @@ Invoke-RestMethod -Uri "http://127.0.0.1:5000/submit" -Method POST -ContentType 
 **Actual response:**
 
 ```json
-
 {
+  "confidence": 0.5547,
 
-  "confidence": 0.5547,
+  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
 
-  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+  "guess": "unsure",
 
-  "guess": "unsure",
+  "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
 
-  "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
+  "model_score": 0.4822,
 
-  "model_score": 0.4822,
-
-  "style_score": 0.6634
-
+  "style_score": 0.6634
 }
-
 ```
 
 The system returned `unsure` because the combined score was between the human and AI thresholds.
@@ -203,17 +199,13 @@ Invoke-RestMethod -Uri "http://127.0.0.1:5000/appeal" -Method POST -ContentType 
 **Expected response structure (appeal request was tested):**
 
 ```json
-
 {
+  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
 
-  "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+  "status": "under_review",
 
-  "status": "under_review",
-
-  "message": "Your appeal has been submitted for review."
-
+  "message": "Your appeal has been submitted for review."
 }
-
 ```
 
 ### What the log shows afterwards
@@ -229,59 +221,49 @@ Invoke-RestMethod -Uri "http://127.0.0.1:5000/log?limit=2" -Method GET | Convert
 **Actual audit log entries:**
 
 ```json
-
 {
+  "count": 2,
 
-  "count": 2,
+  "entries": [
+    {
+      "combined_score": 0.5547,
 
-  "entries": [
+      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
 
-    {
+      "creator_id": "user123",
 
-      "combined_score": 0.5547,
+      "guess": "unsure",
 
-      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
+      "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
 
-      "creator_id": "user123",
+      "model_score": 0.4822,
 
-      "guess": "unsure",
+      "status": "decided",
 
-      "label": "We cannot confidently determine whether this writing was created by a person or AI. No conclusion should be drawn from this result alone.",
+      "style_score": 0.6634,
 
-      "model_score": 0.4822,
+      "timestamp": "2026-11-03T03:53:51+00:00"
+    },
 
-      "status": "decided",
+    {
+      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
 
-      "style_score": 0.6634,
+      "creator_id": "user123",
 
-      "timestamp": "2026-11-03T03:53:51+00:00"
+      "event": "appeal",
 
-    },
+      "reasoning": "I wrote this text myself. Please review the AI detection result.",
 
-    {
+      "status": "under_review",
 
-      "content_id": "e7e6af7d-9968-48dd-b397-b33605d6175e",
-
-      "creator_id": "user123",
-
-      "event": "appeal",
-
-      "reasoning": "I wrote this text myself. Please review the AI detection result.",
-
-      "status": "under_review",
-
-      "timestamp": "2026-11-03T03:55:33+00:00"
-
-    }
-
-  ]
-
+      "timestamp": "2026-11-03T03:55:33+00:00"
+    }
+  ]
 }
-
 ```
 
-The audit log preserves the original decision and adds the appeal as a separate entry. This provides a history of the submission and its review request.
----
+## The audit log preserves the original decision and adds the appeal as a separate entry. This provides a history of the submission and its review request.
+
 ## How I Used AI
 
 ### Moment 1 — Implementing the Flask API
@@ -310,8 +292,8 @@ ChatGPT provided Python implementations, explanations, and testing commands. It 
 
 **What I changed:**
 
-I added the functions to my project, tested different writing samples, integrated both signals into the Flask API, and verified the combined scores. I implemented appeal handling and confirmed that appeal requests were recorded in the audit log.
----
+## I added the functions to my project, tested different writing samples, integrated both signals into the Flask API, and verified the combined scores. I implemented appeal handling and confirmed that appeal requests were recorded in the audit log.
+
 ## Unit 8 — Testing and Improvements
 
 ## Rate Limiting
@@ -358,16 +340,29 @@ I checked the `/log` endpoint and confirmed that all five rejected requests were
 
 The baseline staff attack suite ran **56 cases**. Full per-case inputs and raw outcomes are in `results/attack_run_2026-11-09_2109_before.md`. The runner left 56 cases for manual HELD/BROKE assessment; HTTP success alone does not prove that an attack succeeded.
 
-| Group | Observed outcomes | Interpretation |
-|---|---|---|
-| EV01–EV10 | 1 `human`, 7 `unsure`, 2 `ai` | Potential evasion; assess each against its expected behavior |
-| FP01–FP08 | 6 `ai`, 2 `unsure` | Potential false positives; FP02–FP07 warrant review |
-| PI01–PI06 | 1 `human`, 5 `unsure` | No demonstrated execution of injected instructions |
-| MF01–MF08 | MF02 returned HTTP 500; MF08 returned 413 | Short-text crash exposed |
-| RQ01–RQ12 | All HTTP 400 | Invalid requests rejected |
-| FL01_01–FL01_12 | First 10 HTTP 200, final 2 HTTP 429 | Rate limiting triggered |
+| Group           | Observed outcomes                         | Interpretation                                               |
+| --------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| EV01–EV10       | 1 `human`, 7 `unsure`, 2 `ai`             | Potential evasion; assess each against its expected behavior |
+| FP01–FP08       | 6 `ai`, 2 `unsure`                        | Potential false positives; FP02–FP07 warrant review          |
+| PI01–PI06       | 1 `human`, 5 `unsure`                     | No demonstrated execution of injected instructions           |
+| MF01–MF08       | MF02 returned HTTP 500; MF08 returned 413 | Short-text crash exposed                                     |
+| RQ01–RQ12       | All HTTP 400                              | Invalid requests rejected                                    |
+| FL01_01–FL01_12 | First 10 HTTP 200, final 2 HTTP 429       | Rate limiting triggered                                      |
 
 **Ten audit log entries from the run:** The ten exact JSON records still need to be selected and pasted from `logs/audit.jsonl` or `results/audit_extract.json`. No fabricated entries are included. The audit log should include the original decision and rejection records for representative attacks.
+
+[
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_empty","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_missing","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_null","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_number","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_long","event":"rejected","status":"rejected","reason":"text_too_long"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"unknown","event":"rejected","status":"rejected","reason":"invalid_creator_id"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_list","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_dict","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"eval_boolean","event":"rejected","status":"rejected","reason":"invalid_text"},
+{"timestamp":"2026-11-10T06:43:47+00:00","creator_id":"unknown","event":"rejected","status":"rejected","reason":"invalid_creator_id"}
+]
 
 **Single worst outcome:** MF02 sent a one-character input and received HTTP 500. A user should receive a clear validation error, not a server failure. Potential false-positive classifications are also important because the consequences for legitimate writers can be serious.
 
@@ -375,13 +370,13 @@ The baseline staff attack suite ran **56 cases**. Full per-case inputs and raw o
 
 Baseline evidence: `results/run_2026-11-09_2216_before.md`. After-change evidence: `results/run_2026-11-09_2243_after.md`. The baseline did not exercise Criterion 4; the after-change runner did.
 
-| Criterion | Target | After trial 1 | After trial 2 | After trial 3 | Verdict |
-|---|---|---|---|---|---|
-| 1. Human false positives | No more than 1/10 high-confidence AI false positives | 6/10 `ai` | 6/10 `ai` | 6/10 `ai` | **Not established** — sample authorship unverified |
-| 2. Score separation | Mean AI score at least 0.30 above mean human score | `ai, human, ai` | Same | Same | **Not established** — numeric group comparison missing |
-| 3. Label coverage | `human`, `unsure`, and `ai` all reachable | `unsure, ai, ai` | Same | Same | **MISSED** |
-| 4. Appeal logging | 10/10 appeals recorded `under_review` | 10/10 | 10/10 | 10/10 | **MET** |
-| 5. Invalid inputs | 10/10 HTTP 400 or 413 without crashes | 10/10 | 10/10 | 10/10 | **MET** |
+| Criterion                | Target                                               | After trial 1    | After trial 2 | After trial 3 | Verdict                                                |
+| ------------------------ | ---------------------------------------------------- | ---------------- | ------------- | ------------- | ------------------------------------------------------ |
+| 1. Human false positives | No more than 1/10 high-confidence AI false positives | 6/10 `ai`        | 6/10 `ai`     | 6/10 `ai`     | **Not established** — sample authorship unverified     |
+| 2. Score separation      | Mean AI score at least 0.30 above mean human score   | `ai, human, ai`  | Same          | Same          | **Not established** — numeric group comparison missing |
+| 3. Label coverage        | `human`, `unsure`, and `ai` all reachable            | `unsure, ai, ai` | Same          | Same          | **MISSED**                                             |
+| 4. Appeal logging        | 10/10 appeals recorded `under_review`                | 10/10            | 10/10         | 10/10         | **MET**                                                |
+| 5. Invalid inputs        | 10/10 HTTP 400 or 413 without crashes                | 10/10            | 10/10         | 10/10         | **MET**                                                |
 
 **Real output from one trial:** `run_eval.py::main`, after evaluation, Criterion 5. This is an abbreviated extraction of the recorded HTTP statuses (the complete JSON is in the report):
 
@@ -409,12 +404,12 @@ Baseline evidence: `results/run_2026-11-09_2216_before.md`. After-change evidenc
 
 The same 56 attacks were rerun. Full report: `results/attack_run_2026-11-09_2226_after.md`.
 
-| Check | Before | After |
-|---|---|---|
-| MF02, one-character input | HTTP 500 | **HTTP 400** |
-| RQ01–RQ12 | All HTTP 400 | All HTTP 400 |
-| FL01_11–FL01_12 | HTTP 429 | HTTP 429 |
-| FP02–FP07 | Classified `ai` | Still classified `ai` |
+| Check                     | Before          | After                 |
+| ------------------------- | --------------- | --------------------- |
+| MF02, one-character input | HTTP 500        | **HTTP 400**          |
+| RQ01–RQ12                 | All HTTP 400    | All HTTP 400          |
+| FL01_11–FL01_12           | HTTP 429        | HTTP 429              |
+| FP02–FP07                 | Classified `ai` | Still classified `ai` |
 
 **Did it help?** Yes, the observed crash became a controlled rejection. The fix was deliberately narrow: it did not resolve the potential false-positive cases or the missing `human` label in the evaluation scenario. The after-run report also left all 56 attack verdicts for manual review rather than auto-marking them HELD or BROKE.
 
