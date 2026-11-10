@@ -30,7 +30,7 @@ from flask import Flask, jsonify, request
 
 import audit
 import config
-import audit
+
 import stylometry
 import scoring
 import detector
@@ -153,24 +153,45 @@ def health():
 
 # ── YOU BUILD THIS ────────────────────────────────────────────────────────────
 
+
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
-    payload = request.get_json(silent=True) or {}
+    payload = request.get_json(silent=True)
+
+    if not isinstance(payload, dict):
+        audit.log_rejection(
+            creator_id="unknown",
+            reason="invalid_json"
+        )
+        return jsonify({"error": "A JSON object is required"}), 400
 
     text = payload.get("text", "")
     creator_id = payload.get("creator_id", "")
 
     if not isinstance(text, str) or not text.strip():
+        audit.log_rejection(
+            creator_id=str(creator_id),
+            reason="invalid_text"
+        )
         return jsonify({"error": "Text is required"}), 400
 
     if not isinstance(creator_id, str) or not creator_id.strip():
+        audit.log_rejection(
+            creator_id="unknown",
+            reason="invalid_creator_id"
+        )
         return jsonify({"error": "Creator ID is required"}), 400
 
     if len(text) > 10000:
+        audit.log_rejection(
+            creator_id=creator_id,
+            reason="text_too_long"
+        )
         return jsonify({"error": "Text is too long"}), 413
 
     content_id = str(uuid.uuid4())
+
 
     model_score = detector.model_signal(text)
 
@@ -206,13 +227,13 @@ def submit():
     }), 200
     
     return jsonify({
-        "content_id": content_id,
-        "guess": "AI" if model_score >= 0.5 else "Human",
-        "confidence": model_score,
-        "label": "Temporary label",
-        "model_score": model_score,
-        "style_score": 0.0
-    }), 200
+    "content_id": content_id,
+    "guess": "AI" if model_score >= 0.5 else "Human",
+    "confidence": model_score,
+    "label": "Temporary label",
+    "model_score": model_score,
+    "style_score": 0.0
+}), 200
 
 
 @app.post("/appeal")

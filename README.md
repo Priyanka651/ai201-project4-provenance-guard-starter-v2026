@@ -309,28 +309,37 @@ These sections will be completed using actual attack results, evaluation runs, a
 
 ## Rate Limiting
 
-**My limits:** **_ per minute, _** per day
+**My limits:** 10 requests per minute, 200 requests per day.
 
 **Why those numbers and not others:**
 
-<!-- Think about two people: a real writer submitting their own work a few
-     times an hour, and a script sending a thousand variations to map your
-     thresholds. Your numbers have to be liveable for the first and hostile to
-     the second. -->
+I chose 10 requests per minute because a normal writer may submit their work several times while making changes, but they are unlikely to need more than 10 submissions in one minute. The daily limit of 200 allows regular use while restricting scripts that repeatedly submit variations to discover the detection thresholds.
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
-differently — one script can look like a thousand callers, and one household
-can look like one. -->
+**What a caller counts as:**
+
+The current rate limiter uses the caller's IP address. This is simple to implement, but multiple users sharing the same IP address may affect each other's limits. A script using multiple IP addresses could also bypass this restriction.
 
 **The run of status codes when I pushed past it:**
 
-<!-- python run_attacks.py --flood 15 -->
+Command:
 
+```bash
+python run_attacks.py --flood 15
 ```
 
+Actual output:
+
+```text
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
 
----
+10 requests succeeded, and 5 requests were rate limited.
+
+The results were saved in `results/flood_2026-11-09_2055.md`.
+
+**Audit logging verification:**
+
+I checked the `/log` endpoint and confirmed that all five rejected requests were recorded with `event: rejected`, `reason: rate_limited`, and `status: rejected`.
 
 ## Attack Run — Before
 
