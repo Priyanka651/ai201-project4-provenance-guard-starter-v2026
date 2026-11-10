@@ -113,6 +113,75 @@ def main():
         trials = []
         for trial in range(1, args.trials + 1):
             results = []
+            if scenario.get("appeals"):
+                for i, appeal in enumerate(scenario["appeals"], 1):
+                    try:
+                        submit_response = requests.post(
+                            f"{args.url}/submit",
+                            json={
+                                "text": appeal["text"],
+                                "creator_id": f"{appeal['creator_id']}_trial{trial}"
+                            },
+                            timeout=args.timeout
+                        )
+
+                        submit_data = submit_response.json()
+                        content_id = submit_data.get("content_id")
+
+                        if submit_response.status_code != 200 or not content_id:
+                            results.append({
+                                "status": submit_response.status_code,
+                                "appeal_status": None,
+                                "logged": False
+                            })
+                            continue
+
+                        appeal_response = requests.post(
+                            f"{args.url}/appeal",
+                            json={
+                                "content_id": content_id,
+                                "reasoning": appeal["reasoning"]
+                            },
+                            timeout=args.timeout
+                        )
+
+                        appeal_data = appeal_response.json()
+
+                        log_response = requests.get(
+                            f"{args.url}/log?limit=200",
+                            timeout=args.timeout
+                        )
+                        log_response.raise_for_status()
+
+                        entries = log_response.json().get("entries", [])
+
+                        logged = any(
+                            entry.get("content_id") == content_id
+                            and entry.get("status") == "under_review"
+                            and entry.get("event") == "appeal"
+                            for entry in entries
+                        )
+
+                        results.append({
+                            "status": appeal_response.status_code,
+                            "appeal_status": appeal_data.get("status"),
+                            "logged": logged,
+                            "content_id": content_id
+                        })
+
+                    except Exception as exc:
+                        results.append({
+                            "status": None,
+                            "logged": False,
+                            "error": str(exc)
+                        })
+
+                trials.append(results)
+                print(
+                    f"  trial {trial}: "
+                    f"{sum(r.get('logged', False) for r in results)}/10 appeals logged"
+                )
+                continue
             for i, body in enumerate(bodies_for(scenario), 1):
                 preview = describe(body)
                 try:

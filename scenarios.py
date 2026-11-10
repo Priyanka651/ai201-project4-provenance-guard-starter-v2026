@@ -1,3 +1,4 @@
+
 """
 Provenance Guard — Unit 8, Milestone 3
 
@@ -59,6 +60,26 @@ SCENARIOS = [
         ],
     },
 
+    # Criterion 4: Appeal logging
+    {
+        "name": "appeal logging",
+        "criterion": 4,
+        "appeals": [
+            {
+                "creator_id": f"eval_appeal_{i}",
+                "text": (
+                    "I worked on my software development project "
+                    "and tested several features. Some tests failed, "
+                    "so I reviewed the code and corrected the errors."
+                ),
+                "reasoning": (
+                    "I wrote this myself. Please review the decision."
+                ),
+            }
+            for i in range(1, 11)
+        ],
+    },
+
     # Criterion 5: Invalid input handling
     {
         "name": "bad input validation",
@@ -81,31 +102,66 @@ SCENARIOS = [
 
 def validate() -> list[str]:
     """
-    Validate scenarios before evaluation.
+    Validate all five evaluation scenarios.
     """
     problems = []
 
     for i, scenario in enumerate(SCENARIOS, 1):
+
         if not scenario.get("name"):
             problems.append(f"scenario {i} has no name")
+
+        # Criterion 4 uses appeals, not texts or bodies.
+        if scenario.get("criterion") == 4:
+            appeals = scenario.get("appeals", [])
+
+            if len(appeals) != 10:
+                problems.append(
+                    f"scenario {i} must contain exactly 10 appeals"
+                )
+
+            for j, appeal in enumerate(appeals, 1):
+                if not isinstance(appeal, dict):
+                    problems.append(
+                        f"scenario {i}, appeal {j} is not a dict"
+                    )
+                    continue
+
+                for field in ("creator_id", "text", "reasoning"):
+                    value = appeal.get(field)
+                    if not isinstance(value, str) or not value.strip():
+                        problems.append(
+                            f"scenario {i}, appeal {j} "
+                            f"has invalid {field}"
+                        )
+
+            continue
 
         texts = scenario.get("texts")
         bodies = scenario.get("bodies")
 
-        if texts and bodies:
+        if texts is not None and bodies is not None:
             problems.append(
                 f"scenario {i} has both texts and bodies"
             )
             continue
 
-        if bodies:
+        # Criterion 5 uses raw request bodies.
+        if bodies is not None:
+            if not bodies:
+                problems.append(
+                    f"scenario {i} has no request bodies"
+                )
+
             for j, body in enumerate(bodies, 1):
                 if not isinstance(body, dict):
                     problems.append(
                         f"scenario {i}, body {j} is not a dict"
                     )
+
             continue
 
+        # Criteria 1, 2, and 3 use text samples.
         if not texts:
             problems.append(
                 f"scenario {i} has no texts and no bodies"
@@ -113,11 +169,11 @@ def validate() -> list[str]:
             continue
 
         for j, text in enumerate(texts, 1):
-            if not str(text).strip():
+            if not isinstance(text, str) or not text.strip():
                 problems.append(
-                    f"scenario {i}, text {j} is empty"
+                    f"scenario {i}, text {j} is empty or invalid"
                 )
-            elif str(text).startswith("REPLACE ME"):
+            elif text.startswith("REPLACE ME"):
                 problems.append(
                     f"scenario {i}, text {j} is still a placeholder"
                 )
