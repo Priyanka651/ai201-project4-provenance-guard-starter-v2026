@@ -193,7 +193,16 @@ def submit():
     content_id = str(uuid.uuid4())
 
 
-    model_score = detector.model_signal(text)
+    try:
+        model_score = detector.model_signal(text)
+    except ValueError:
+        audit.log_rejection(
+            creator_id=creator_id,
+            reason="text_too_short"
+        )
+        return jsonify({
+            "error": "Text is too short to analyze"
+        }), 400
 
     style_score = stylometry.style_signal(text)
 
